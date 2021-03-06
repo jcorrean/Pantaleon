@@ -1,0 +1,24 @@
+---
+title: "PantaleonData"
+author: "Juan C. Correa"
+date: "3/6/2021"
+output: pdf_document
+---
+
+Vamos a documentar un análisis de datos sencillo
+
+```{r}
+setwd("~/Documents/GitHub/Pantaleon")
+library(readxl)
+PantaleonData <- read_excel("data 19-20.xlsx")
+summary(PantaleonData$TCH)
+```
+
+Vamos a realizar un análisis más exhaustivo de la variable TCH
+
+```{r}
+library(psych)
+describeBy(PantaleonData$TCH, group = PantaleonData$Estacion, mat = TRUE, digits = 0)
+```
+
+
