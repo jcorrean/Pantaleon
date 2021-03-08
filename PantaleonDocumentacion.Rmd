@@ -1,24 +1,68 @@
 ---
-title: "PantaleonData"
+title: "PantaleonData: Tabulación versus Graficación"
 author: "Juan C. Correa"
 date: "3/6/2021"
 output: pdf_document
 ---
 
-Vamos a documentar un análisis de datos sencillo
+# Introducción
+En ocasiones previas hemos visto algunas recomendaciones sobre cómo documentar nuestros análisis de resultados estadísticos. Ahora vamos a comprender comparativamente el rol de la tabulación y la graficación. Como de costumbre, empecemos por abrir nuestros datos de ejemplo, siguiendo las recomendaciones que hemos aprendido.
 
 ```{r}
 setwd("~/Documents/GitHub/Pantaleon")
 library(readxl)
 PantaleonData <- read_excel("data 19-20.xlsx")
+```
+
+Con esta función, por ejemplo, estamos haciendo una descripción gruesa de la variable TCH. 
+```{r}
 summary(PantaleonData$TCH)
 ```
 
-Vamos a realizar un análisis más exhaustivo de la variable TCH
+Para resumir o describir el comportamiento estadístico de una variable, a veces incluso uno puede prescindir de la tabulación y la graficación porque la prosa cumple de manera adecuada el propósito de la descripción. La tabulación y la graficación se hacen mucho más interesantes cuando uno desea explorar relaciones entre variables. 
+
+# La tabulación y La graficación
+
+Ahora vamos a concentrarnos en ver cómo puede "automatizarse" la descripción estadística de TCH, pero en función de otra variable, por ejemplo, estación. Para ello, vamos a usar una nueva librería llamada apaTables.
 
 ```{r}
-library(psych)
-describeBy(PantaleonData$TCH, group = PantaleonData$Estacion, mat = TRUE, digits = 0)
+library(apaTables)
+apa.1way.table(iv = Estacion, dv = TCH, data = PantaleonData, show.conf.interval = TRUE)
+
 ```
 
+La tabla anterior, nos presenta el promedio, la desviación estándar y los intervalos de confianza de la variable TCH para cada una de las estaciones de producción. 
+
+Ahora, vamos a mostrar un ejemplo que ilustre cómo podríamos presentar los resultados anteriores pero haciendo uso de gráficos. Para ello vamos a usar las librerías ggplot2 y ggridges.
+
+```{r}
+library(ggplot2)
+library(ggridges)
+ggplot(PantaleonData, 
+  aes(x=TCH, y=Estacion)) + 
+  geom_density_ridges(fill="green", alpha = 0.4) + 
+  ylab("Estacion") + xlab("TCH") + 
+  theme(axis.text.y = element_text(family="Arial", face="bold", colour="black", size=rel(1))) +
+  theme(axis.text.x = element_text(family="Arial", face="bold", colour="black", size=rel(1))) + 
+  theme_light()
+```
+
+
+# Tabulación versus Graficación: Algunas mejores prácticas
+
+* La tabulación enfatiza precisiones numéricas de los estadísticos reportados en la tabla que no son evidentes en las gráficas.
+
+* La graficación suele ser más "amigable" a la vista de la audiencia en comparación con una fria tabla que muestra números.
+
+* Si se quiere describir una variable, a veces es suficiente con la prosa (siendo innecesarias las tabulaciones y las gráficas). Con dos o más variables, hay que usar tabulación y graficación.
+
+* La audiencia a la cual se dirige un informe debe ser el criterio más importante para decidir cómo reportar los resulatdos.
+
+* La mejor práctica, sin embargo, es aquella que hace un uso inteligente de tabulaciones y graficaciones.
+
+Veamos un ejemplo en el siguiente artículo: 
+
+[Correa, J.C., Garzón, W., Brooker, P., Sakarkar, G., Carranza, S., Yunado, L. & Rincón, A. (2019). Evaluation of Collaborative Consumption of Online Food Delivery Services through Web Mining Techniques. Journal of Retailing and Consumer Services, 46, 45-50. doi: https://doi.org/10.1016/j.jretconser.2018.05.002](https://www.sciencedirect.com/science/article/pii/S0969698918302339?via%3Dihub)
+
+cuyo repositorio está disponible en este enlace [https://github.com/jcorrean/WebMining-OFD](https://github.com/jcorrean/WebMining-OFD)
 
