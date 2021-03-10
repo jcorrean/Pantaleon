@@ -7,7 +7,7 @@ output: pdf_document
 
 Para comprender cómo funciona la estrategia típica de la comunidad de R para aprender a usar las herramientas disponibles, vamos a hacer uso de la librería "np".
 
-Comencemos entonces por arrancar un modelo de regresión múltiple paramétrico estándar.
+Comencemos entonces por arrancar un modelo de regresión múltiple paramétrico estándar. La variable dependiente (la que nos interesa analizar) es en este caso "logwage" y la variable independiente es "age".
 
 ```{r}
 library("np")
@@ -16,3 +16,33 @@ model.par <- lm(logwage ~ age + I(age^2), data = cps71)
 summary(model.par)
 ```
 
+Del output que se obtiene con la sintaxis previa, obsérvese que el resultado global del modelo anterior arroja un $R^2 = 0.2232$ (F(2, 202) = 30.3, p = 3.103e-12).
+
+Una manera de chequear que uno de los supuestos de la regresión se cumple es solicitando un histograma a los residuales del ajuste del modelo. Este histograma debería ser semejante al de una distribución normal, o un qqplot con una nube de puntos que muestre una patrón lineal, o simplemente solicitamos el cálculo de la asimetría y la kurtosis de esos residuales. Veamos.
+
+```{r}
+hist(model.par$residuals)
+qqnorm(model.par$residuals)
+library(e1071)
+skewness(model.par$residuals)
+kurtosis(model.par$residuals)
+```
+
+Claramente, el modelo anterior está mostrando unos resultados que no cumplen con los principios o supuestos del modelo, y eso nos lleva a buscar otras opciones. Veamos ahora, siguiendo la documentación de la librería np, cómo proceder con una regresión lineal no-paramétrica.
+
+```{r}
+model.np <- npreg(logwage ~ age,
+regtype = "ll",
+bwmethod = "cv.aic",
+gradients = TRUE,
+data = cps71)
+summary(model.np)
+```
+
+```{r}
+plot(cps71$age, cps71$logwage, xlab = "age", ylab = "log(wage)", cex=.1)
+lines(cps71$age, fitted(model.np), lty = 1, col = "blue")
+lines(cps71$age, fitted(model.par), lty = 1, col = " red")
+```
+
+La línea azul muestra el ajuste del modelo no-paramétrico, mientras que la línea roja muestra el ajuste del modelo paramétrico. 
