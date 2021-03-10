@@ -1,0 +1,18 @@
+---
+title: "Regresión Lineal versus Kernel"
+author: "Juan C. Correa"
+date: "3/10/2021"
+output: pdf_document
+---
+
+Para comprender cómo funciona la estrategia típica de la comunidad de R para aprender a usar las herramientas disponibles, vamos a hacer uso de la librería "np".
+
+Comencemos entonces por arrancar un modelo de regresión múltiple paramétrico estándar.
+
+```{r}
+library("np")
+data("cps71")
+model.par <- lm(logwage ~ age + I(age^2), data = cps71)
+summary(model.par)
+```
+
