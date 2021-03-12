@@ -1,0 +1,88 @@
+---
+title: "Comparación entre dos Grupos "
+author: "Juan C. Correa"
+date: "3/11/2021"
+output: pdf_document
+---
+
+En este tutorial, vamos a explicar cómo hacer algunos análisis de comparación entre dos grupos exclusivamente. Comencemos usando los datos que aparecen a continuación. 
+
+```{r}
+ipak <- function(pkg){
+  new.pkg <- pkg[!(pkg %in% installed.packages()[, "Package"])]
+  if (length(new.pkg)) 
+    install.packages(new.pkg, dependencies = TRUE)
+  sapply(pkg, require, character.only = TRUE)
+}
+
+# uso
+packages <- c("readxl","apa","dplyr","tidyBF","BayesFactor","ggstatsplot")
+ipak(packages)
+
+
+setwd('~/Documents/GitHub/Pantaleon')
+df <- read_excel("PantaleonDatos.xls")
+head(df)
+```
+
+Hasta este momento, puede observarse que hemos definido una función llamada "ipak" que nos permite definir cuáles son los paquetes o librerías que vamos a usar y si no lo tenemos instalado, pedirle a R que me los instale de manera automática y me los cargue antes de proceder con el análisis.
+
+
+Ahora que tenemos los datos abiertos, vamos a hacer algunos cálculos. Empecemos mirando que a los datos de Pantaleon, le hemos creado una variable dicotómica llamada "Gerente". Desde luego esta es una variable ficticia, pero hace referencia a dos estilos de gerenciar la producción. A la mitad de la producción se le ha puesto bajo la dirección del Gerente A, y al resto se le ha puesto bajo la dirección del Gerente B. Entonces queremos ver si hay o no una asociación entre el estilo de gerencia y el rendimiento de las fincas.
+
+# t de Student (Prueba Paramétrica)
+
+```{r}
+
+t.test(df$rendimiento ~ df$Gerente, var.equal=TRUE)
+```
+El resultado de aplicar esta sintaxis nos muestra un estadístico (en este caso t) cuyo valor sugiere que no existe una relación o asociación significativa entre el rendimiento y el estilo de gerencia (t = 0.636, df = 1528, p = 0.5245). La diferencia en el rendimiento de los lotes bajo la dirección del Gerente A (131.7172) no es estadísticamente superior al rendimiento de los lotes bajo la dirección del Gerente B (131.3576).
+
+# Prueba de Wilcoxon (Prueba no paramétrica)
+Veamos ahora, cómo serían los resultados si corremos una prueba de tipo no paramétrico.
+
+```{r}
+wilcox.test(rendimiento ~ Gerente, data = df, exact = FALSE)
+```
+
+Ahora vemos como resultado otro estadístico (en este caso W) cuyo valor sugiere que no existe una relación o asociación significativa entre el rendimiento y el estilo de gerencia (W = 296842, p = 0.6246). En este ejemplo, se observa que la conclusión que se obtiene por ambos métodos coinciden en la interpretación de no haber relación estadísticamente significativa entre el estilo de gerencia y el rendimiento de los lotes.
+
+#t test bayesiano con paquete BayesFactor
+
+```{r}
+ttestBF(formula = rendimiento ~ Gerente, data = df)
+veamos <- bf_ttest(data = df, x = Gerente, y = rendimiento)
+variable.names(veamos)
+veamos[11]
+```
+
+Al correr una t test bayesiana, nos interesa saber el factor de bayes que se encuentra en la columna 11 de la tabla que hemos llamado "veamos". El resultado es 0.0702 que al ser casi cero, se interpreta como una asociación no importante desde el punto de vista estadístico. 
+
+Algo que quizás no se ha mencionado explíctamente hasta ahora es que las pruebas estadísticas que nos permiten estimar relaciones entre variables pueden complementarse con técnicas de graficación o visualización. Por ejemplo, en el siguiente gráfico estamos representando el comportamiento estadístico del rendimiento de los lotes en función del Gerente.
+
+```{r}
+ggstatsplot::ggbetweenstats(
+  data = df,
+  x = Gerente, # Variable de agrupación/independiente
+  y = rendimiento, # Variable dependiente
+  xlab = "Estilo de Gerencia", # etiqueta para el eje X
+  ylab = "Rendimiento del Lote", # etiqueta para el eje y
+  type = "p",# "p" de parametrico, "np" no-parametrico, "r" de robusto, "bf" de Bayesiano.
+  effsize.type = "g", # se refiere al método de cálculo de efecto
+  conf.level = 0.99,
+  plot.type = "violin", # dos opciones "boxplot" o "violin"
+  outlier.tagging = TRUE, # Te indica cuales son outliers
+  outlier.coef = 1.5, # coeficiente de Tukey para detección de outliers
+  outlier.label.args = list(color = "red"), # la etiqueta de los outlairs en rojo
+  ggtheme = ggplot2::theme_light(), # cambiar el fondo de la gráfica todos los temas en https://ggplot2.tidyverse.org/reference/ggtheme.html
+  package = "yarrr", # El paquete asociado a la paleta de colores.
+  palette = "info2", # Elegir la paletta dentro del paquete 
+  title = "Comparación de Rendimientos según el Estilo de la Gerencia",
+  caption = "Aquí pueden colocar la descripción  que gusten"
+)
+
+```
+
+# Otras pruebas de comparación
+
+Por su gran aplicabilidad, el análisis de varianza (y su versión no-paramétrica llamada prueba H de Kruskal-Wallis) funcionan de manera muy similar a las pruebas de comparación entre dos grupos que se han documentado acá. La diferencia entre el ANOVA o la prueba Kruskal-Wallis y las pruebas mostradas acá es básicamente el número de grupos a comparar. Así pues, en la prueba t de Student (o la prueba Wilcoxon)
