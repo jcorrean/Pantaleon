@@ -1,0 +1,93 @@
+---
+title: "ANOVAFACTORIAL"
+author: "Juan C. Correa"
+date: "3/15/2021"
+output: pdf_document
+---
+
+El análisis de varianza factorial es una extensión del análisis de varianza que estudiamos previamente. Al igual que en el análisis de varianza unifactorial, en el análisis de varianza factorial, se analiza una variable dependiente, pero ahora se incluyen más variables independientes. Acá vamos a analizar la influencia conjunta de dos variables (Entrenamiento y Gerente) sobre una variable dependiente (TCH), de la base de datos que encontramos a continuación
+
+```{r}
+setwd("~/Documents/GitHub/Pantaleon")
+library(readxl)
+AOV <- read_excel("PantaleonDatos2.xls")
+```
+
+Dado el objetivo hacia el cual nos dirigimos, resulta fundamental entender cómo cambia la sintaxis que debemos correr para obtener los resultados.
+
+```{r}
+resultado_TCH <- aov(AOV$TCH ~ AOV$Entrenamiento + AOV$Gerente)
+summary(resultado_TCH)
+```
+
+Obsérvese que ahora, tenemos como resultado una tabla dentro de la cual se indica el valor del estadístico F para cada variable independiente. Así por ejemplo, la variable Entrenamiento muestra una influencia estadísticamente significativa sobre TCH (F = 41.830, df = 2, p < 2e-16). Asimismo, la variable Gerente muestra una influencia estadísticamente significativa sobre TCH (F = 5.516, df = 1, p = 0.019). La sinxtaxis anterior, sin embargo, solo modela la acción separada de cada variable independiente, sin considerar la interación entre ellas. Para considerar la interacción entre estas variables debemos hacer una pequeña modificación a la sintaxis anterior, reemplazando el simbolo + por el simbolo * dentro de los argumentos de la función aov. Obsérvese que en los resultados, ahora se obtendrá una línea adicional donde aparece AOV\$Entrenamiento:AOV\$Gerente para indicar la interacción entre esas variables. Obsérvese que la estructura de la tabla del anova factorial con el cálculo de interacción entre variables es similar a la tabla del anova factorial sin interacción y del anova unifactorial.
+
+```{r}
+resultado_TCH <- aov(AOV$TCH ~ AOV$Entrenamiento * AOV$Gerente)
+summary(resultado_TCH)
+```
+
+Ahora, en orden de importancia, según su valor F, Entrenamiento es el factor con mayor efecto sobre TCH, seguido por Gerente, mientras que la interacción entre Gerente y Entrenamiento no resulta significativa.
+
+```{r}
+library("ggpubr")
+ggviolin(AOV, x = "Entrenamiento", y = "TCH", merge = TRUE, fill = "Gerente",
+         orientation="horiz",
+         palette = c("red", "blue"), 
+         add = "boxplot", color = "black")
+```
+
+
+```{r}
+library("dplyr")
+group_by(AOV, Entrenamiento, Gerente) %>%
+  summarise(
+    count = n(),
+    mean = mean(TCH, na.rm = TRUE),
+    sd = sd(TCH, na.rm = TRUE)
+  )
+model.tables(resultado_TCH, type="means", se = TRUE)
+```
+
+
+
+```{r}
+library(ggstatsplot)
+grouped_ggbetweenstats(data =AOV,
+                        x = Entrenamiento, y = TCH,
+                        grouping.var = Gerente,
+                        p.adjust.method = "bonferroni")
+```
+
+
+```{r}
+TukeyHSD(resultado_TCH)
+```
+
+
+Un aspecto que no se ha considerado acá es el relativo al número de observaciones que hay por cada combinación de Gerente y Entrenamiento. Dado que en este caso, el número es desigual, estamos en presencia de un diseño no balanceado y esto nos lleva a introducir una pequeña modificación en el cálculo del análisis de varianza al especificar que se trata de un diseño de análisis de varianza tipo III
+
+
+```{r}
+library(car)
+Anova(resultado_TCH, type = "III")
+```
+
+Obsérvese que ahora el valor de la F para entrenamiento ha cambiado considerablemente, solo en función del tipo de cálculo que se ha desarrollado para este ejercicio. Una explicación sobre los tipos de cálculos existentes para los análisis de varianza factorial puede encontrarse [aquí]: ([https://towardsdatascience.com/anovas-three-types-of-estimating-sums-of-squares-don-t-make-the-wrong-choice-91107c77a27a])
+
+Finalmente, y al igual que lo hicimos con el caso del análisis de varianza unidireccional, debemos volver a chequear el supuesto de homoscedasticidad, aplicando las herramientas de cálculos ofrecidas por la prueba de Breusch-Pagan y de varianza no constante.
+
+```{r}
+library(lmtest)
+bptest(resultado_TCH)
+library(car)
+ncvTest(lm(AOV$TCH ~ AOV$Entrenamiento*AOV$Gerente))
+```
+
+Con estos resultados, volvemos a comprobar que el modelo no se ajusta y los cálculos obtenidos están sesgados, de modo pues que hace falta aplicar alguna otra técnica. Las variantes de regresión múltiple, especialmente regresión ordinal, regresión kernel, regresión quantil. Estudiaremos algunas de esas técnicas más adelante. Por lo pronto, podríamos calcular un análisis de varianza robusto.
+
+```{r}
+library(WRS2)
+t1way(AOV$TCH ~ AOV$Entrenamiento*AOV$Gerente)
+```
+
