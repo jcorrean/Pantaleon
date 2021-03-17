@@ -1,0 +1,78 @@
+---
+title: "RegresionMultiple"
+author: "Juan C. Correa"
+date: "3/16/2021"
+output: pdf_document
+---
+
+El objetivo de la regresión múltiple es predecir los valores de una variable de respuesta (variable dependiente) a partir de los valores conocidos en una o más predictores (variables independientes). En el contexto de la producción de azúcar, podríamos mostrar interés en conocer, por ejemplo, cuáles factores son los predictores del rendimiento de las fincas productoras de azúcar. Como de costumbre, arranquemos por abrir los datos.
+
+```{r}
+library(readxl)
+AOV <- read_excel("~/Documents/GitHub/Pantaleon/PantaleonDatos3.xls")
+factores <- AOV[c(1, 2, 3, 4, 7, 8)]
+```
+
+Ahora, vamos a generar un gráfico que nos permita saber cuáles factores se asocian con el rendimiento
+
+```{r}
+library(psych)
+pairs.panels(factores, 
+             smooth = TRUE, 
+             density = TRUE, 
+             digits = 2, 
+             method = "spearman", 
+             lm = TRUE, 
+             hist.col = "lightblue", 
+             alpha = 0.01,
+             stars = TRUE)
+```
+
+Del gráfico anterior, vale la pena mencionar dos cosas fundamentales. La significancia estadística denotada con asteriscos resulta presente incluso para relaciones entre variables cuya correlación es casi cero (por ejemplo, para la relación entre rendimiento y TAH = 0.08, o para la relación entre lote y TC = -0.11). Cuando trabajamos con grandes conjuntos de datos (con archivos de datos que superan las miles de observaciones, es muy típico observar correlaciones significativas, pero espúreas por su baja magnitud). 
+
+Para fines pedagógicos, acá vamos a decir que nuestra variable de interés es el rendimiento de la finca, y las posibles variables predictoras son area y TCH. De esta manera, podríamos entonces especificar una regresión múltiple que contemple estas tres variables únicamente. Veamos:
+
+```{r}
+modelo1 <- lm(factores$rendimiento ~ factores$TCH + factores$Area)
+summary(modelo1)
+```
+
+Al interpretar los resultados de este primer modelo, nos interesa interpretar dos cosas de manera integrada. Por un lado, nos interesa saber si cada predictora resulta ser significativa (tiene un valor p bajo marcado con asteriscos). Por otro lado, nos interesa saber cuál es la proporción de varianza de la variable dependiente (rendimiento) que resulta explicada por el modelo ($R^2=0.1214$). 
+
+En este primer modelo, ambas variables son estadísticamente significativas y muestran una relación negativa con el rendimiento (columna "Estimate"). El modelo, sin embargo, aún cuando resulta ser un modelo con capacidad de predicción significativa (F = 106.7), muestra una baja capacidad de explicación porque el porcentaje de varianza explicada apenas llega al 12.14% tal como se observa en donde dice Adjusted R-Squared.
+
+Veamos ahora si cambiando la especificación del modelo, logramos mejorar la capacidad de predicción, al definir un segundo modelo en el que se indique la interacción entre TCH y Area como un tercer predictor.
+
+```{r}
+modelo2 <- lm(factores$rendimiento ~ factores$TCH * factores$Area)
+summary(modelo2)
+```
+
+Efectivamente, con este segundo modelo la capacidad de predicción cambia pero lo hace muy poco, pues el $R^2$ ahora muestra un valor de 0.1233 cuando antes nos daba 0.1214. 
+
+Más allá de lo anterior, al igual que aprendimos con el análisis de varianza, para la regresión múltiple es fundamental verificar los supuestos en los que se apoya. 
+
+```{r}
+hist(modelo2$residuals)
+library(e1071)
+skewness(modelo2$residuals)
+kurtosis(modelo2$residuals)
+library(lmtest)
+bptest(modelo2)
+library(car)
+ncvTest(lm(AOV$rendimiento ~ AOV$TCH*AOV$Area))
+plot(modelo2$residuals, AOV$rendimiento)
+qqnorm(modelo2$residuals)
+par(mfrow=c(2,2))
+plot(modelo2)
+par(mfrow=c(1,1))
+```
+
+Tal como puede apreciarse, aún cuando la distribución de los residuales se aproxima bastante a una curva normal, hemos visto que se viola el principio de homoscedasticidad y eso puede introducir sesgoe en los cálculos. Por ello, se hace fundamental, correr un modelo de regresión robusta.
+
+```{r}
+library(robust)
+modelo2R <- lmRob(modelo2)
+summary(modelo2R)
+```
+
