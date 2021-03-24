@@ -1,0 +1,98 @@
+library(haven)
+telepsi <- read_sav(file.choose())
+#telepsi <- read.spss("C:/Users/lenovo/Dropbox/Papers/ACCEPTED/Correa & Forero/telepsi.sav", to.data.frame = TRUE, use.value.labels = FALSE)
+#telepsi <- read.spss("/Dropbox/Dropbox/Papers/ACCEPTED/Correa & Forero/telepsi.sav", to.data.frame = TRUE, use.value.labels = FALSE)
+# Let's clean some errors of coding in the original dataset
+library(car)
+summary(telepsi$Usotaxi)
+telepsi$Usotaxi <- as.numeric(telepsi$Usotaxi)
+telepsi$Usotaxi <- recode(telepsi$Usotaxi, "2=0")
+summary(telepsi$Usotaxi)
+summary(telepsi$Usocarro)
+telepsi$Usocarro <- recode(telepsi$Usocarro, "3=2")
+telepsi$Usocarro <- recode(telepsi$Usocarro, "2=0")
+summary(telepsi$Usocarro)
+summary(telepsi$Usositp)
+telepsi$Usositp <- recode(telepsi$Usositp, "0=2")
+telepsi$Usositp <- recode(telepsi$Usositp, "3=2")
+telepsi$Usositp <- recode(telepsi$Usositp, "2=0")
+summary(telepsi$Usositp)
+summary(telepsi$Usotrans)
+telepsi$Usotrans <- recode(telepsi$Usotrans, "20000=2")
+telepsi$Usotrans <- recode(telepsi$Usotrans, "2=0")
+summary(telepsi$Usotrans)
+summary(telepsi$Usobici)
+telepsi$Usobici <- recode(telepsi$Usobici, "2500=2")
+telepsi$Usobici <- recode(telepsi$Usobici, "3=2")
+telepsi$Usobici <- recode(telepsi$Usobici, "2=0")
+summary(telepsi$Usobici)
+summary(telepsi$Usomoto)
+telepsi$Usomoto <- recode(telepsi$Usomoto, "2=0")
+summary(telepsi$Usomoto)
+summary(telepsi$Usobicitaxi)
+telepsi$Usobicitaxi <- recode(telepsi$Usobicitaxi, "2=0")
+telepsi$Usobicitaxi <- recode(telepsi$Usobicitaxi, "3=0")
+telepsi$Usobicitaxi <- recode(telepsi$Usobicitaxi, "4=0")
+summary(telepsi$Usobicitaxi)
+summary(telepsi$Caminar)
+telepsi$Caminar <- as.numeric(telepsi$Caminar)
+telepsi$Caminar <- recode(telepsi$Caminar, "2=0")
+summary(telepsi$Caminar)
+summary(telepsi$Estrato)
+telepsi$Estrato <- recode(telepsi$Estrato, "0=2")
+telepsi$Estrato <- recode(telepsi$Estrato, "7=2")
+summary(telepsi$Estrato)
+summary(telepsi$Municipio)
+telepsi$Municipio <- recode(telepsi$Municipio, "0=1")
+summary(telepsi$Municipio)
+#Hagamos también recodificación para sexo
+telepsi$sexo <- recode(telepsi$sexo, "3=1")
+summary(telepsi$sexo)
+# Vamos a crear una nueva variable que refleje la condición
+# de si la persona usa varios medios de transporte o no.
+telepsi["Mobility"] <- NA
+telepsi$Mobility <- as.numeric(telepsi$Usouber) + as.numeric(telepsi$Usocarro) + as.numeric(telepsi$Usositp) + as.numeric(telepsi$Usotrans) + as.numeric(telepsi$Usotaxi) + as.numeric(telepsi$Usobus) + as.numeric(telepsi$Usobici) + as.numeric(telepsi$Usomoto) + as.numeric(telepsi$Usobicitaxi) + as.numeric(telepsi$Caminar)
+summary(telepsi$Mobility)
+barplot(table(telepsi$Mobility), main = "Distribution of Mobility")
+# Ahora vamos a crear una base de datos con las variables que nos
+# interesan trabajar
+Mobility <- data.frame(telepsi[8:9], telepsi[13:21], telepsi[35], telepsi[201:202])
+Mobility$Sex <- NA
+Mobility$Sex <- as.character(Mobility$sexo)
+Mobility$Afiliadosalud <- ifelse(Mobility$Afiliadosalud == 1, c("Contributive"), c("Non-Contributive")) 
+Mobility$sexo <- NULL
+Mobility$Sex <- ifelse(Mobility$Sex == 1, c("Male"), c("Female")) 
+# Let's remove all missing values
+Mobility <- Mobility[complete.cases(Mobility),]
+write.csv(Mobility, file = "MobilityE.csv")
+library(readr)
+MobilityE <- read_csv(file.choose())
+#MobilityE <- read_csv("C:/Users/lenovo/Dropbox/Papers/ACCEPTED/Correa & Forero/MobilityE.csv")
+TravelTimesAnovabySex <- aov(Duraciontraslado ~ Sex, data=Mobility)
+summary(TravelTimesAnovabySex)
+TravelTimesAnovabyEconomicResponsibility <- aov(Duraciontraslado ~ Resp.económica, data = Mobility)
+summary(TravelTimesAnovabyEconomicResponsibility)
+library(psych)
+describeBy(Mobility$Duraciontraslado, group = MobilityE$Sex)
+describeBy(Mobility$Duraciontraslado, group = Mobility$Resp.económica)
+EducAttainment <- Mobility$Nveducativo
+TravelTime <- MobilityE$Duraciontraslado
+EconomicStatus <- Mobility$Estrato
+names(Mobility)[names(Mobility)=="Afiliadosalud"] <- "Affiliation"
+
+library(Hmisc)
+rcorr(EducAttainment, TravelTime)
+rcorr(EconomicStatus, TravelTime)
+library(rpart)
+regtree <- rpart(Duraciontraslado ~ ., data = Mobility, method = "anova", control=rpart.control(minsplit=30, cp=0.01))
+plot(regtree, uniform=TRUE, main="Classification Tree of Consumers' Mobility Patterns")
+text(regtree, use.n=TRUE, all=TRUE, cex=.9)
+summary(regtree)
+printcp(regtree)
+
+library(ggmap)
+register_google(key = "AIzaSyC-lZRy0oFhbxkVoSafdl6T-WiCuR3QOX0")
+bogotaMap <- get_map('Bogota, Colombia', zoom = 11, scale = "auto", maptype = "roadmap", source = "google", color = "bw")
+p <- ggmap(bogotaMap)
+p + geom_point(alpha = .7, data = Mobility, 
+               aes(y = latitudres, x = longitudres, colour=Affiliation, size=Mobility)) + scale_color_gradient(low = "green", high = "red") + scale_colour_brewer(palette = "Set1")
